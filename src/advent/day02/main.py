@@ -47,10 +47,29 @@ def validate_password(password: Password) -> bool:
         Whether the password is valid or not
     """
     return (
-        password.lower
-        <= password.password.count(password.character)
-        <= password.upper
+        password.lower <= password.password.count(password.character) <= password.upper
     )
+
+
+def updated_validate_password(password: Password) -> bool:
+    """Check if a password meets its rules updated for part 2.
+
+    Parameters
+    ----------
+    password: Password
+        The password and its rules
+
+    Returns
+    -------
+    Boolean:
+        Whether the password is valid or not
+    """
+    lower_index: int = password.lower - 1
+    upper_index: int = password.upper - 1
+    lower_match: int = int(password.password[lower_index] == password.character)
+    upper_match: int = int(password.password[upper_index] == password.character)
+    matches: int = lower_match + upper_match
+    return matches == 1
 
 
 def read_inputs(filename: str) -> List[Password]:
@@ -86,3 +105,19 @@ def part1(filename: str = "input.txt") -> int:
         The number of valid passwords
     """
     return sum(validate_password(pwd) for pwd in read_inputs(filename))
+
+
+def part2(filename: str = "input.txt") -> int:
+    """Solve part 2 of the challenge.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the file to read in
+
+    Returns
+    -------
+    int
+        The number of valid passwords
+    """
+    return sum(updated_validate_password(pwd) for pwd in read_inputs(filename))
