@@ -46,14 +46,11 @@ def validate_password(password: Password) -> bool:
     Boolean:
         Whether the password is valid or not
     """
-    if password is not None:
-        return (
-            password.lower
-            <= password.password.count(password.character)
-            <= password.upper
-        )
-    else:
-        return False
+    return (
+        password.lower
+        <= password.password.count(password.character)
+        <= password.upper
+    )
 
 
 def read_inputs(filename: str) -> List[Password]:
