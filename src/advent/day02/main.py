@@ -8,7 +8,7 @@ Password = NamedTuple(
 )
 
 
-def parse_line(line: str) -> Optional[Password]:
+def parse_line(line: str) -> Password:
     """Read a line from a text file and turn it into a Password tuple.
 
     Parameters
@@ -23,18 +23,17 @@ def parse_line(line: str) -> Optional[Password]:
     """
     rgx: re.Pattern = re.compile(r"(\d*)-(\d*) (\w): (\w*)")
     match: Optional[re.Match] = rgx.match(line)
+    if match is None:
+        raise ValueError("line could not be parsed")
     lower: str
     upper: str
     character: str
     password: str
-    if match is not None:
-        lower, upper, character, password = match.groups()
-        return Password(int(lower), int(upper), character, password)
-    else:
-        return None
+    lower, upper, character, password = match.groups()
+    return Password(int(lower), int(upper), character, password)
 
 
-def validate_password(password: Optional[Password]) -> bool:
+def validate_password(password: Password) -> bool:
     """Check if a password meets its rules.
 
     Parameters
@@ -57,7 +56,7 @@ def validate_password(password: Optional[Password]) -> bool:
         return False
 
 
-def read_inputs(filename: str) -> List[Optional[Password]]:
+def read_inputs(filename: str) -> List[Password]:
     """Read in and parse a text file of inputs.
 
     Parameters
