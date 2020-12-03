@@ -1,6 +1,6 @@
 """Day 02 of the advent of code challenge."""
-from pathlib import Path
 import math
+from pathlib import Path
 from typing import List, Tuple
 
 
@@ -24,11 +24,26 @@ def read_inputs(filename: str) -> List[List[bool]]:
 
 
 class Sledding:
+    """Let's go sledding."""
+
     def __init__(self, filename: str = "input.txt") -> None:
         self.grid = read_inputs(filename)
 
     def traverse(self, down: int = 1, right: int = 3) -> int:
-        """Follow the grid."""
+        """Follow the grid.
+        
+        Parameters
+        ----------
+        down: int
+            How far to move down per step
+        right: int
+            How far to move to the right per step
+        
+        Returns
+        -------
+        int
+            The number of trees hit following that path.
+        """
         y: int = 0
         x: int = 0
         trees: int = 0
@@ -38,10 +53,16 @@ class Sledding:
             x = (x + right) % (len(self.grid[y]) - 1)
             y += down
         return trees
-    
+
     def part2(self) -> int:
-        """Try some other paths."""
-        slopes: Tuple(Tuple(int, int)) = (
+        """Try some other paths.
+        
+        Returns
+        -------
+        int
+            The product of the trees hit in all slopes.
+        """
+        slopes: Tuple[Tuple[int, int], ...] = (
             (1, 1),
             (1, 3),
             (1, 5),
@@ -49,4 +70,3 @@ class Sledding:
             (2, 1),
         )
         return math.prod(self.traverse(*path) for path in slopes)
-
