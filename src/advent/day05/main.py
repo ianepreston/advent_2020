@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Generator, NamedTuple
+from typing import Generator, NamedTuple, Set, Tuple
 
 
 class BoardingPass(NamedTuple):
@@ -110,3 +110,22 @@ def part1() -> int:
         The highest seat ID
     """
     return max((board_pass.seat_id for board_pass in read_inputs()))
+
+
+def part2() -> int:
+    """Find your seat ID.
+
+    Returns
+    -------
+    int:
+        Your seat ID
+    """
+    seat_ids: Set[int] = set(board_pass.seat_id for board_pass in read_inputs())
+    min_id: int = min(seat_ids)
+    max_id: int = max(seat_ids)
+    missing_seats: Tuple[int, ...] = tuple(
+        id for id in range(min_id, max_id) if id not in seat_ids
+    )
+    if len(missing_seats) != 1:
+        raise ValueError(f"Found {len(missing_seats)} seats, should have exactly 1")
+    return missing_seats[0]

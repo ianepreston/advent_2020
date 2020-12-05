@@ -25,3 +25,9 @@ def test_part_1_actual():
     """Check the actual answer to part 1."""
     test_result = main.part1()
     assert test_result == 933
+
+
+def test_part_2_actual():
+    """Check the actual answer to part 2."""
+    test_result = main.part2()
+    assert test_result == 711
