@@ -74,6 +74,22 @@ class Bag:
         else:
             return any(bag.subcontains(name) for bag, _ in self.directly_contains)
 
+    def contain_count(self) -> int:
+        """Find how many bags you have to put in this bag.
+
+        Returns
+        -------
+        int:
+            How many bags the weird rules make you put in this bag
+        """
+        if len(self.directly_contains) == 0:
+            return 0
+        else:
+            return sum(
+                count + (count * bag.contain_count())
+                for bag, count in self.directly_contains
+            )
+
 
 def split_contains_txt(split_contains_txt: str) -> Tuple[int, str, str]:
     """Parse one of the container clauses for a rule.
@@ -181,3 +197,21 @@ def part1(filename: str = "input.txt") -> int:
     bag_dict = read_inputs(filename)
     # return bag_dict
     return sum(bag.subcontains("shiny_gold") for bag in bag_dict.values())
+
+
+def part2(filename: str = "input.txt") -> int:
+    """Solve part 2 of the puzzle.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the file in this directory to load
+
+    Returns
+    -------
+    int:
+        The number of bags that the shiny gold bag contains
+    """
+    bag_dict = read_inputs(filename)
+    shiny_gold: Bag = bag_dict["shiny_gold"]
+    return shiny_gold.contain_count()
