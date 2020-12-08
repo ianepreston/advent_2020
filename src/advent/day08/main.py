@@ -31,30 +31,6 @@ def part1(filename: str = "input.txt") -> int:
             compy.step()
 
 
-def loops_forever(instruction_list: List[Instruction]) -> bool:
-    """Check if a program is an infinite loop.
-
-    Parameters
-    ----------
-    instruction_list: List[Instruction]
-        The instruction list to check
-
-    Returns
-    -------
-    bool:
-        Whether the program will loop forever or not
-    """
-    indices: Set[int] = set()
-    compy: Compy = Compy(instruction_list)
-    while True:
-        if compy.index in indices:
-            return True
-        elif compy.run_complete:
-            return False
-        else:
-            indices.add(compy.index)
-            compy.step()
-
 
 def part2(filename: str = "input.txt") -> int:
     """Solve part 2 of the puzzle.
@@ -92,7 +68,7 @@ def part2(filename: str = "input.txt") -> int:
         swap_instruction: Instruction = Instruction(swap_cmd, candidate_instruction.num)
         swapped_instructions: List[Instruction] = original_instructions.copy()
         swapped_instructions[candidate_index] = swap_instruction
-        if not loops_forever(swapped_instructions):
+        if not Compy(swapped_instructions).loops_forever():
             break
     compy = Compy(swapped_instructions)
     compy.full_run()

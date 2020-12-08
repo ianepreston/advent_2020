@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, NamedTuple, Union
+from typing import List, NamedTuple, Set, Union
 
 
 class Instruction(NamedTuple):
@@ -95,3 +95,29 @@ class Compy:
         """Execute the program all the way through."""
         while not self.run_complete:
             self.step()
+
+    def loops_forever(self) -> bool:
+        """Check if a program is an infinite loop.
+
+        Returns
+        -------
+        bool:
+            Whether the program will loop forever or not
+        """
+        indices: Set[int] = set()
+        while True:
+            if self.index in indices:
+                # Reset before returning
+                self.index = 0
+                self.accumulator = 0
+                self.run_complete = False
+                return True
+            elif self.run_complete:
+                # Reset before returning
+                self.index = 0
+                self.accumulator = 0
+                self.run_complete = False
+                return False
+            else:
+                indices.add(self.index)
+                self.step()
