@@ -31,7 +31,6 @@ def part1(filename: str = "input.txt") -> int:
             compy.step()
 
 
-
 def part2(filename: str = "input.txt") -> int:
     """Solve part 2 of the puzzle.
 
