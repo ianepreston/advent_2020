@@ -29,27 +29,38 @@ class Instruction(NamedTuple):
         return Instruction(cmd, int(num))
 
 
+def instructions_from_file(file: Union[Path, str]) -> List[Instruction]:
+    """Read in a text file to get a list of Instructions.
+
+    Parameters
+    ----------
+    file: Path, str
+        The file to load
+    
+    Returns
+    -------
+    List[Instructions]
+        All the instructions in the file
+    """
+    with open(file, "r") as f:
+        return [Instruction.parse(line) for line in f.readlines()]
+
+
 class Compy:
     """I'm a computer."""
 
-    def __init__(self) -> None:
-        """Instantiate with index and accumulator at 0. No instructions loaded."""
-        self.index: int = 0
-        self.accumulator: int = 0
-        self.instructions: List[Instruction] = []
-        self.run_complete: bool = False
-
-    def load_program(self, file: Union[Path, str]) -> None:
-        """Read in a text file to get a list of Instructions.
-
+    def __init__(self, instructions: List[Instruction]) -> None:
+        """Instantiate with index and accumulator at 0.
+        
         Parameters
         ----------
-        file: Path
-            The file to load
+        instructions: List[Instruction]
+            The program to run
         """
-        with open(file, "r") as f:
-            self.instructions = [Instruction.parse(line) for line in f.readlines()]
-        self.run_complete = False
+        self.index: int = 0
+        self.accumulator: int = 0
+        self.instructions: List[Instruction] = instructions
+        self.run_complete: bool = False
 
     def _exec_instruction(self, instruction: Instruction) -> None:
         """Run an instruction.

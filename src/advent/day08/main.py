@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Set
 
-from advent.compy import Compy, Instruction
+from advent.compy import Compy, Instruction, instructions_from_file
 
 
 def part1(filename: str = "input.txt") -> int:
@@ -21,9 +21,8 @@ def part1(filename: str = "input.txt") -> int:
         The value of the accumulator right before a loop
     """
     indices: Set[int] = set()
-    compy: Compy = Compy()
     infile: Path = Path(__file__).resolve().parent / filename
-    compy.load_program(infile)
+    compy: Compy = Compy(instructions_from_file(infile))
     while True:
         if compy.index in indices:
             return compy.accumulator
@@ -46,8 +45,7 @@ def loops_forever(instruction_list: List[Instruction]) -> bool:
         Whether the program will loop forever or not
     """
     indices: Set[int] = set()
-    compy: Compy = Compy()
-    compy.instructions = instruction_list
+    compy: Compy = Compy(instruction_list)
     while True:
         if compy.index in indices:
             return True
@@ -73,9 +71,8 @@ def part2(filename: str = "input.txt") -> int:
     """
     # Has to be an index that's encountered
     indices: Set[int] = set()
-    compy: Compy = Compy()
     infile: Path = Path(__file__).resolve().parent / filename
-    compy.load_program(infile)
+    compy: Compy = Compy(instructions_from_file(infile))
     original_instructions: List[Instruction] = compy.instructions.copy()
     while compy.index not in indices:
         indices.add(compy.index)
@@ -97,7 +94,6 @@ def part2(filename: str = "input.txt") -> int:
         swapped_instructions[candidate_index] = swap_instruction
         if not loops_forever(swapped_instructions):
             break
-    compy = Compy()
-    compy.instructions = swapped_instructions
+    compy = Compy(swapped_instructions)
     compy.full_run()
     return compy.accumulator
