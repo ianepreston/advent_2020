@@ -11,19 +11,8 @@ class Instruction(NamedTuple):
     cmd: str
     num: int
 
-
-class Compy:
-    """I'm a computer."""
-
-    def __init__(self) -> None:
-        """Instantiate with index and accumulator at 0. No instructions loaded."""
-        self.index: int = 0
-        self.accumulator: int = 0
-        self.instructions: List[Instruction] = []
-        self.run_complete: bool = False
-
     @staticmethod
-    def _parse_instruction(line: str) -> Instruction:
+    def parse(line: str) -> Instruction:
         """Turn a line of text into an Instruction.
         
         Parameters
@@ -39,6 +28,17 @@ class Compy:
         cmd, num = line.strip().split()
         return Instruction(cmd, int(num))
 
+
+class Compy:
+    """I'm a computer."""
+
+    def __init__(self) -> None:
+        """Instantiate with index and accumulator at 0. No instructions loaded."""
+        self.index: int = 0
+        self.accumulator: int = 0
+        self.instructions: List[Instruction] = []
+        self.run_complete: bool = False
+
     def load_program(self, file: Union[Path, str]) -> None:
         """Read in a text file to get a list of Instructions.
 
@@ -48,9 +48,7 @@ class Compy:
             The file to load
         """
         with open(file, "r") as f:
-            self.instructions = [
-                self._parse_instruction(line) for line in f.readlines()
-            ]
+            self.instructions = [Instruction.parse(line) for line in f.readlines()]
         self.run_complete = False
 
     def _exec_instruction(self, instruction: Instruction) -> None:
