@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Counter, List
+from typing import Callable, Counter, Dict, List, Tuple
 
 
 class Lobby:
@@ -18,6 +18,8 @@ class Lobby:
             the layout of the lobby
         """
         self.state: List[List[str]] = state
+        self.rows = len(self.state)
+        self.cols = len(self.state[0])
 
     def _adjacent_values(self, row: int, col: int) -> Counter[str]:
         """Count how many of each type of tile are adjacent to a tile.
@@ -48,6 +50,44 @@ class Lobby:
                     adj_values[value] += 1
         return adj_values
 
+    def _enhanced_adjacent_values(self, row: int, col: int) -> Counter[str]:
+        """Count how many of each type of tile are adjacent to a tile by line of sight.
+
+        Parameters
+        ----------
+        row: int
+            row coordinate for the value
+        col: int
+            col coordinate for the value
+
+        Returns
+        -------
+        Counter
+            How many of each type of tile is in the adjacent tiles
+        """
+        adj_values: Counter[str] = Counter()
+        vectors: Tuple[int, int, int] = (-1, 0, 1)
+        # Don't worry about empty tiles
+        for row_vec in vectors:
+            for col_vec in vectors:
+                if row_vec == 0 == col_vec:
+                    pass
+                else:
+                    check_row: int = row
+                    check_col: int = col
+                    check_val: str = "."
+                    while check_val == ".":
+                        check_row += row_vec
+                        check_col += col_vec
+                        row_in_bounds: bool = 0 <= check_row < self.rows
+                        col_in_bounds: bool = 0 <= check_col < self.cols
+                        if row_in_bounds & col_in_bounds:
+                            check_val = self.state[check_row][check_col]
+                        else:
+                            check_val = "B"
+                    adj_values[check_val] += 1
+        return adj_values
+
     def _update_value(self, row: int, col: int) -> str:
         """Calculate the next state of a point based on the rules.
 
@@ -64,6 +104,8 @@ class Lobby:
             What the value should be updated to.
         """
         current_val: str = self.state[row][col]
+        if current_val == ".":
+            return current_val
         adjacent_vals: Counter[str] = self._adjacent_values(row, col)
         if (current_val == "L") & (adjacent_vals["#"] == 0):
             return "#"
@@ -72,18 +114,54 @@ class Lobby:
         else:
             return current_val
 
-    def get_next_state(self) -> List[List[str]]:
+    def _enhanced_update_value(self, row: int, col: int) -> str:
+        """Calculate the next state of a point based on the rules.
+
+        Parameters
+        ----------
+        row: int
+            The row index of the value
+        col: int
+            The column index of the value
+
+        Returns
+        -------
+        str
+            What the value should be updated to.
+        """
+        current_val: str = self.state[row][col]
+        if current_val == ".":
+            return current_val
+        adjacent_vals: Counter[str] = self._enhanced_adjacent_values(row, col)
+        if (current_val == "L") & (adjacent_vals["#"] == 0):
+            return "#"
+        elif (current_val == "#") & (adjacent_vals["#"] >= 5):
+            return "L"
+        else:
+            return current_val
+
+    def get_next_state(self, update_func: str = "original") -> List[List[str]]:
         """Calculate what the next state would be.
+
+        Parameters
+        ----------
+        update_func: str
+            Update function to call, "original" or "enhanced"
 
         Returns
         -------
         List[List[str]]
             The next state of the lobby
         """
+        func_dict: Dict[str, Callable[[int, int], str]] = {
+            "original": self._update_value,
+            "enhanced": self._enhanced_update_value,
+        }
+        updater: Callable[[int, int], str] = func_dict[update_func]
         new_state: List[List[str]] = copy.deepcopy(self.state)
-        for row in range(len(self.state)):
-            for col in range(len(self.state[0])):
-                new_state[row][col] = self._update_value(row, col)
+        for row in range(self.rows):
+            for col in range(self.cols):
+                new_state[row][col] = updater(row, col)
         return new_state
 
     def is_stabilized(self, new_layout: List[List[str]]) -> bool:
@@ -109,10 +187,16 @@ class Lobby:
                     return False
         return True
 
-    def run_to_equilibrium(self) -> None:
-        """Keep updating until we stabilize."""
+    def run_to_equilibrium(self, update_func: str = "original") -> None:
+        """Keep updating until we stabilize.
+
+        Parameters
+        ----------
+        update_func: str
+            Update function to call, "original" or "enhanced"
+        """
         while True:
-            next_state: List[List[str]] = self.get_next_state()
+            next_state: List[List[str]] = self.get_next_state(update_func)
             if self.is_stabilized(next_state):
                 break
             else:
@@ -183,4 +267,10 @@ def part2(filename: str = "input.txt") -> int:
     int:
         The answer to part 2
     """
-    return 0
+    lobby: Lobby = Lobby(read_inputs(filename))
+    lobby.run_to_equilibrium("enhanced")
+    return lobby.calc_occupied_seats()
+
+
+if __name__ == "__main__":
+    part2("example.txt")
