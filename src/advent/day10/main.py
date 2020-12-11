@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List, Optional
 
 
 def read_inputs(filename: str = "input.txt") -> List[int]:
@@ -55,44 +55,49 @@ def part1(filename: str = "input.txt") -> int:
 
 
 class Node(object):
-    def __init__(self, value: int):
+    """I'm a node in a graph."""
+
+    def __init__(self, value: int) -> None:
+        """Create a Node.
+
+        Parameters
+        ----------
+        value: int
+            The value of the node.
+        """
         self.value = value
         self.children: List[Node] = []
+        self.n_forks: Optional[int] = None
 
-    def __lt__(self, other: Node) -> bool:
-        return self.value < other.value
-
-    def __le__(self, other: Node) -> bool:
-        return self.value <= other.value
-
-    def __eq__(self, other: Node) -> bool:
-        return self.value == other.value
-
-    def __ne__(self, other: Node) -> bool:
-        return self.value != other.value
-
-    def __gt__(self, other: Node) -> bool:
-        return self.value > other.value
-
-    def __ge__(self, other: Node) -> bool:
-        return self.value >= other.value
-
-    def __str__(self) -> str:
-        return str(self.value)
-    
     def __repr__(self) -> str:
+        """Show a string of the node for easier debugging.
+
+        Returns
+        -------
+        str
+            The string value of the node
+        """
         return str(self.value)
-    
+
     def forks(self) -> int:
-        if not self.children:
-            return 1
-        else:
-            return sum(child.forks() for child in self.children)
-    
+        """Show how many paths there are from this node.
 
+        Use memoization so this doesn't take a literal eternity.
 
-    
-
+        Returns
+        -------
+        int
+            The number of paths from this node
+        """
+        if self.n_forks is None:
+            if not self.children:
+                self.n_forks = 1
+            else:
+                self.n_forks = sum([child.forks() for child in self.children])
+        # Need the assert to make mypy happy, but then I have to noqa the assert
+        # to make flake8 happy. Gross.
+        assert self.n_forks is not None  # noqa S101
+        return self.n_forks
 
 
 def part2(filename: str = "input.txt") -> int:
@@ -125,6 +130,5 @@ def part2(filename: str = "input.txt") -> int:
     return node_dict[top_node].forks()
 
 
-
 if __name__ == "__main__":
-    part2("example1.txt")
+    part2("input.txt")

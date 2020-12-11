@@ -35,4 +35,4 @@ def test_part_2_example2():
 def test_part_2_actual():
     """Check the example for part 2."""
     test_result = main.part2()
-    assert test_result == 4794981
+    assert test_result == 3100448333024
