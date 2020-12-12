@@ -44,6 +44,7 @@ class Ship:
     def __init__(self) -> None:
         """Start at 0,0 facing East."""
         self.location: Point = Point(0, 0)
+        self.waypoint: Vector = Vector(10, 1)
         self.facing: str = "E"
 
     @staticmethod
@@ -81,7 +82,7 @@ class Ship:
         """
         return abs(self.location.x) + abs(self.location.y)
 
-    def rotate(self, direction: str, degrees: int) -> None:
+    def rotate_ship(self, direction: str, degrees: int) -> None:
         """Turn the ship.
 
         Parameters
@@ -112,7 +113,7 @@ class Ship:
             new_dir = next(rotate_seq)
         self.facing = new_dir
 
-    def move(self, direction: str, amount: int) -> None:
+    def move_ship_directly(self, direction: str, amount: int) -> None:
         """Move the ship.
 
         Parameters
@@ -128,7 +129,7 @@ class Ship:
             self.location.x + scaled_vec.x, self.location.y + scaled_vec.y
         )
 
-    def take_direction(self, direction: Tuple[str, int]) -> None:
+    def take_direction_deprecated(self, direction: Tuple[str, int]) -> None:
         """Take a direction.
 
         Parameters
@@ -137,11 +138,11 @@ class Ship:
             which way to move or turn and by how much
         """
         if direction[0] == "F":
-            self.move(self.facing, direction[1])
+            self.move_ship_directly(self.facing, direction[1])
         elif direction[0] in ("L", "R"):
-            self.rotate(*direction)
+            self.rotate_ship(*direction)
         elif direction[0] in ("N", "S", "E", "W"):
-            self.move(*direction)
+            self.move_ship_directly(*direction)
         else:
             raise ValueError(f"Invalid instruction f{direction}")
 
@@ -162,7 +163,7 @@ def part1(filename: str = "input.txt") -> int:
     directions: List[Tuple[str, int]] = read_inputs(filename)
     boaty_mc_boatface = Ship()
     for direction in directions:
-        boaty_mc_boatface.take_direction(direction)
+        boaty_mc_boatface.take_direction_deprecated(direction)
     return boaty_mc_boatface.manhattan_dist
 
 
