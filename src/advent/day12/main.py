@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import itertools
-import math
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Tuple
 
@@ -126,18 +125,23 @@ class Ship:
         degrees: int
             Multiple of 90 to turn
         """
+
         if direction not in ("L", "R"):
             raise ValueError(f"Invalid turn direction: {direction}")
-        radians: float = math.radians(degrees)
         if direction == "R":
-            radians = radians * -1
-        new_x_float: float = (math.cos(radians) * self.waypoint.x) - (
-            math.sin(radians) * self.waypoint.y
-        )
-        new_y_float: float = (math.sin(radians) * self.waypoint.x) - (
-            math.cos(radians) * self.waypoint.y
-        )
-        self.waypoint = Vector(round(new_x_float), round(new_y_float))
+            if degrees == 90:
+                self.waypoint = Vector(self.waypoint.y, -self.waypoint.x)
+            elif degrees == 180:
+                self.waypoint = Vector(-self.waypoint.x, -self.waypoint.y)
+            elif degrees == 270:
+                self.waypoint = Vector(-self.waypoint.y, self.waypoint.x)
+        else:
+            if degrees == 90:
+                self.waypoint = Vector(-self.waypoint.y, self.waypoint.x)
+            elif degrees == 180:
+                self.waypoint = Vector(-self.waypoint.x, -self.waypoint.y)
+            elif degrees == 270:
+                self.waypoint = Vector(self.waypoint.y, -self.waypoint.x)
 
     def move(self, direction: str, amount: int, ship: bool = True) -> None:
         """Move the ship or waypoint.
@@ -248,3 +252,7 @@ def part2(filename: str = "input.txt") -> int:
     for direction in directions:
         boaty_mc_boatface.take_direction_updated(direction)
     return boaty_mc_boatface.manhattan_dist
+
+
+if __name__ == "__main__":
+    part2("input.txt")
