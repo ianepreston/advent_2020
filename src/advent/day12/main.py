@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import itertools
+import math
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Tuple
 
@@ -113,8 +114,33 @@ class Ship:
             new_dir = next(rotate_seq)
         self.facing = new_dir
 
-    def move_ship_directly(self, direction: str, amount: int) -> None:
-        """Move the ship.
+    def rotate_waypoint(self, direction: str, degrees: int) -> None:
+        """Rotate the waypoint around the ship.
+
+        https://stackoverflow.com/questions/34372480/rotate-point-about-another-point-in-degrees-python  # noqaB950
+
+        Parameters
+        ----------
+        direction: str
+            L or R
+        degrees: int
+            Multiple of 90 to turn
+        """
+        if direction not in ("L", "R"):
+            raise ValueError(f"Invalid turn direction: {direction}")
+        radians: float = math.radians(degrees)
+        if direction == "R":
+            radians = radians * -1
+        new_x_float: float = (math.cos(radians) * self.waypoint.x) - (
+            math.sin(radians) * self.waypoint.y
+        )
+        new_y_float: float = (math.sin(radians) * self.waypoint.x) - (
+            math.cos(radians) * self.waypoint.y
+        )
+        self.waypoint = Vector(round(new_x_float), round(new_y_float))
+
+    def move(self, direction: str, amount: int, ship: bool = True) -> None:
+        """Move the ship or waypoint.
 
         Parameters
         ----------
@@ -122,9 +148,29 @@ class Ship:
             Which way to move, N,S,E or W
         amount: int
             How far to move in that direction
+        ship: bool
+            Move the ship (default) or waypoint
         """
         vec: Vector = self._compass_to_vec(direction)
         scaled_vec: Vector = Vector(vec.x * amount, vec.y * amount)
+        if ship:
+            self.location = Point(
+                self.location.x + scaled_vec.x, self.location.y + scaled_vec.y
+            )
+        else:
+            self.waypoint = Vector(
+                self.waypoint.x + scaled_vec.x, self.waypoint.y + scaled_vec.y
+            )
+
+    def move_to_waypoint(self, amount: int) -> None:
+        """Move the ship in the direction of the waypoint.
+
+        Parameters
+        ----------
+        amount: int
+            Number of times to move along the waypoint vector
+        """
+        scaled_vec: Vector = Vector(self.waypoint.x * amount, self.waypoint.y * amount)
         self.location = Point(
             self.location.x + scaled_vec.x, self.location.y + scaled_vec.y
         )
@@ -138,11 +184,28 @@ class Ship:
             which way to move or turn and by how much
         """
         if direction[0] == "F":
-            self.move_ship_directly(self.facing, direction[1])
+            self.move(self.facing, direction[1])
         elif direction[0] in ("L", "R"):
             self.rotate_ship(*direction)
         elif direction[0] in ("N", "S", "E", "W"):
-            self.move_ship_directly(*direction)
+            self.move(*direction)
+        else:
+            raise ValueError(f"Invalid instruction f{direction}")
+
+    def take_direction_updated(self, direction: Tuple[str, int]) -> None:
+        """Take a direction using the new instructions.
+
+        Parameters
+        ----------
+        direction: Tuple[str, int]
+            which way to move or turn and by how much
+        """
+        if direction[0] == "F":
+            self.move_to_waypoint(direction[1])
+        elif direction[0] in ("L", "R"):
+            self.rotate_waypoint(*direction)
+        elif direction[0] in ("N", "S", "E", "W"):
+            self.move(*direction, ship=False)
         else:
             raise ValueError(f"Invalid instruction f{direction}")
 
@@ -167,21 +230,21 @@ def part1(filename: str = "input.txt") -> int:
     return boaty_mc_boatface.manhattan_dist
 
 
-# def part2(filename: str = "input.txt") -> int:
-#     """Solve part 2 of the puzzle.
+def part2(filename: str = "input.txt") -> int:
+    """Solve part 2 of the puzzle.
 
-#     Parameters
-#     ----------
-#     filename: str
-#         The name of the file in this directory to load
+    Parameters
+    ----------
+    filename: str
+        The name of the file in this directory to load
 
-#     Returns
-#     -------
-#     int:
-#         The answer to part 2
-#     """
-#     directions: List[Tuple[str, int]] = read_inputs(filename)
-#     boaty_mc_boatface = Ship()
-#     for direction in directions:
-#         boaty_mc_boatface.take_direction(direction)
-#     return boaty_mc_boatface.manhattan_dist
+    Returns
+    -------
+    int:
+        The answer to part 2
+    """
+    directions: List[Tuple[str, int]] = read_inputs(filename)
+    boaty_mc_boatface = Ship()
+    for direction in directions:
+        boaty_mc_boatface.take_direction_updated(direction)
+    return boaty_mc_boatface.manhattan_dist
