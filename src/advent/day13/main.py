@@ -79,16 +79,118 @@ def part1(filename: str = "input.txt") -> int:
     return next_bus.part1
 
 
-# def part2(filename: str = "input.txt") -> int:
-#     """Solve part 2 of the puzzle.
+class BusFreq(NamedTuple):
+    """Bus 2 electric boogaloo."""
 
-#     Parameters
-#     ----------
-#     filename: str
-#         The name of the file in this directory to load
+    period: int
+    phase: int
 
-#     Returns
-#     -------
-#     int:
-#         The answer to part 2
-#     """
+
+def read_inputs2(filename: str = "input.txt") -> List[BusFreq]:
+    """Read in and parse a text file of inputs.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the file in this directory to load
+
+    Returns
+    -------
+    List[int]
+        Sum of ID and offset for each bus
+    """
+    in_path: Path = Path(__file__).resolve().parent / filename
+    with open(in_path, "r") as f:
+        _: str = f.readline()  # don't care about first line anymore
+        return [
+            BusFreq(int(x), i)
+            for i, x in enumerate(f.readline().split(","))
+            if x != "x"
+        ]
+
+
+def extended_gcd(a: int, b: int) -> Tuple[int, int, int]:
+    """Compute Extended Greatest Common Divisor Algorithm.
+
+    Parameters
+    ----------
+    a: int
+        period of the first item
+    b: int
+        period of the second item
+
+    Returns
+    -------
+    gcd: int
+        The greatest common divisor of a and b.
+    s, t: Tuple[int, int]
+        Coefficients such that s*a + t*b = gcd
+
+    Reference
+    ---------
+    https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Pseudocode
+    """
+    old_r, r = a, b
+    old_s, s = 1, 0
+    old_t, t = 0, 1
+    while r:
+        quotient, remainder = divmod(old_r, r)
+        old_r, r = r, remainder
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+
+    return old_r, old_s, old_t
+
+
+def combine_phased_rotations(bus_a: BusFreq, bus_b: BusFreq) -> BusFreq:
+    """Combine two phased rotations into a single phased rotation.
+
+    Parameters
+    ----------
+    bus_a: BusFreq
+        Phase and period of first bus
+    bus_b: BusFreq
+        Phase and period of the second bus
+
+    Returns
+    -------
+    BusFreq
+        The combined phase and period of the two input busses
+
+    The combined rotation is at its reference point if and only if both a and b
+    are at their reference points.
+    """
+    gcd, s, t = extended_gcd(bus_a.period, bus_b.period)
+    phase_difference = bus_a.phase - bus_b.phase
+    pd_mult, pd_remainder = divmod(phase_difference, gcd)
+    if pd_remainder:
+        raise ValueError("Rotation reference points never synchronize.")
+
+    combined_period = bus_a.period // gcd * bus_b.period
+    combined_phase = (bus_a.phase - s * pd_mult * bus_a.period) % combined_period
+    return BusFreq(combined_period, combined_phase)
+
+
+def part2(filename: str = "input.txt") -> int:
+    """Solve part 2 of the puzzle.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the file in this directory to load
+
+    Returns
+    -------
+    int:
+        The answer to part 2
+
+    Reference
+    ---------
+    https://math.stackexchange.com/questions/2218763/how-to-find-lcm-of-two-numbers-when-one-starts-with-an-offset  # noqaB950
+    """
+    busses: List[BusFreq] = read_inputs2(filename)
+    current_bus: BusFreq = busses.pop()
+    while busses:
+        next_bus: BusFreq = busses.pop()
+        current_bus = combine_phased_rotations(current_bus, next_bus)
+    return -current_bus.phase % current_bus.period
