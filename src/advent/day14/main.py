@@ -80,6 +80,22 @@ def parse_bitmasks(line: str) -> List[Bitmask]:
     ]
 
 
+def part2_bitmasks(line: str) -> str:
+    """Now I have to handle X explicitly. Sigh.
+
+    Parameters
+    ----------
+    line: str
+        Line from the input file
+    
+    Returns
+    -------
+    str:
+        Clean text string of the bitmask
+    """
+    return line.strip().replace("mask = ", "")
+
+
 def apply_bitmasks(bitmasks: List[Bitmask], value: int) -> int:
     """Apply a bitmask to an integer.
 
@@ -100,6 +116,45 @@ def apply_bitmasks(bitmasks: List[Bitmask], value: int) -> int:
     for bitmask in bitmasks:
         value_bitlist[bitmask.index] = bitmask.bit
     return bits_to_int("".join(c for c in value_bitlist))
+
+
+def apply_bitmasks2(bitmask: str, index: int) -> List[int]:
+    """Apply a bitmask using part 2 rules to an integer.
+
+    Parameters
+    ----------
+    bitmask: str
+        The bitmask to apply
+    index: int
+        The index integer to apply the bitmask on
+    
+    Returns
+    -------
+    List[int]
+        All permutations of the bitmasked address
+    """
+    index_bitstring: str = int_to_bits(index)
+    index_bitlist: List[str] = [c for c in index_bitstring]
+    # Do the simple flips first
+    floating_indices = []
+    for i, v in enumerate(c for c in bitmask):
+        if v == "1":
+            index_bitlist[i] = v
+        elif v == "X":
+            floating_indices.append(i)
+    # If there's no masks we're set
+    if not floating_indices:
+        return [bits_to_int("".join(index_bitlist))]
+    # Handle all the permutations
+    permutations: int = 2 ** len(floating_indices)
+    addresses: List[int] = []
+    for i in range(permutations):
+        update_bitlist: List[str] = index_bitlist[:]
+        mask_str: str = f"{i:0b}".zfill(len(floating_indices))
+        for j, v in zip(floating_indices, mask_str):
+            update_bitlist[j] = v
+        addresses.append(bits_to_int("".join(update_bitlist)))
+    return addresses
 
 
 def parse_address(line: str) -> Address:
@@ -185,4 +240,21 @@ def part2(filename: str = "input.txt") -> int:
     int:
         The answer to part 2
     """
-    return 1
+    bitmask: str = ""
+    addresses: Counter = Counter()
+    in_path: Path = Path(__file__).resolve().parent / filename
+    with open(in_path, "r") as f:
+        for line in f.readlines():
+            if line.startswith("mask"):
+                bitmask = part2_bitmasks(line)
+            elif line.startswith("mem"):
+                address: Address = parse_address(line)
+                for index in apply_bitmasks2(bitmask, address.index):
+                    addresses[index] = address.value
+            else:
+                raise ValueError(f"unrecognized line: {line}")
+    return sum(addresses.values())
+
+
+if __name__ == "__main__":
+    part2("example2.txt")

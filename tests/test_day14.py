@@ -14,13 +14,13 @@ def test_part_1_actual():
     assert test_result == 13105044880745
 
 
-# def test_part_2_example1():
-#     """Check the example for part 2."""
-#     test_result = main.part2("example.txt")
-#     assert test_result == 1068781
+def test_part_2_example1():
+    """Check the example for part 2."""
+    test_result = main.part2("example2.txt")
+    assert test_result == 208
 
 
-# def test_part_2_actual():
-#     """Check the example for part 2."""
-#     test_result = main.part2()
-#     assert test_result == 626670513163231
+def test_part_2_actual():
+    """Check the example for part 2."""
+    test_result = main.part2()
+    assert test_result == 3505392154485
