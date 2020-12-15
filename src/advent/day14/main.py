@@ -4,23 +4,25 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 import re
-from typing import Generator, List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 
-def int_to_bits(num: int) -> str:
+def int_to_bits(num: int, nbits: int = 36) -> str:
     """Turn an integer into a 32 bit unsigned int.
 
     Parameters
     ----------
     num: int
         input integer
+    nbits: int
+        length of the bitstring (0 padding)
     
     Returns
     -------
     str
-        32 bit unsigned integer
+        nbits bit unsigned integer
     """
-    return f"{num:036b}"
+    return f"{num:0b}".zfill(nbits)
 
 
 def bits_to_int(bits: str) -> int:
@@ -39,49 +41,15 @@ def bits_to_int(bits: str) -> int:
     return int(bits, 2)
 
 
-class Bitmask(NamedTuple):
-    """Replace a bit at a point."""
-
-    index: int
-    bit: str
-
-
 class Address(NamedTuple):
     """Index and value."""
 
-    index: int
+    location: int
     value: int
 
 
-class FileLine(NamedTuple):
-    """Line from the file, can be a bitmask or an address."""
-
-    bitmasks: Optional(List[Bitmask])
-    address: Optional(Address)
-
-
-def parse_bitmasks(line: str) -> List[Bitmask]:
-    """Turn a line of text into a bitmask.
-
-    Parameters
-    ----------
-    line: str
-        raw input line for a bitmask
-    
-    Returns
-    -------
-    Bitmask:
-        parsed bitmask
-    """
-    return [
-        Bitmask(i, v)
-        for i, v in enumerate(line.strip().replace("mask = ", ""))
-        if v != "X"
-    ]
-
-
-def part2_bitmasks(line: str) -> str:
-    """Now I have to handle X explicitly. Sigh.
+def parse_bitmasks(line: str) -> str:
+    """Parse a bitmask out of a line in the input.
 
     Parameters
     ----------
@@ -96,13 +64,13 @@ def part2_bitmasks(line: str) -> str:
     return line.strip().replace("mask = ", "")
 
 
-def apply_bitmasks(bitmasks: List[Bitmask], value: int) -> int:
+def apply_bitmasks(bitmasks: str, value: int) -> int:
     """Apply a bitmask to an integer.
 
     Parameters
     ----------
-    bitmasks: List[Bitmask]
-        List of bitmasks to apply
+    bitmasks: str
+        The bitmask to apply
     value: int
         The integer to apply the bitmask to
     
@@ -113,8 +81,9 @@ def apply_bitmasks(bitmasks: List[Bitmask], value: int) -> int:
     """
     value_bitstring = int_to_bits(value)
     value_bitlist = [c for c in value_bitstring]
-    for bitmask in bitmasks:
-        value_bitlist[bitmask.index] = bitmask.bit
+    for index, bitmask in enumerate(bitmasks):
+        if bitmask != "X":
+            value_bitlist[index] = bitmask
     return bits_to_int("".join(c for c in value_bitlist))
 
 
@@ -173,32 +142,11 @@ def parse_address(line: str) -> Address:
     rgx = r"mem\[(\d+)\] = (\d+)"
     address_str: str
     value_str: str
-    address_str, value_str = re.match(rgx, line).groups()
+    match: Optional[re.Match] = re.match(rgx, line)
+    if match is None:
+        raise ValueError("No address match for {line}")
+    address_str, value_str = match.groups()
     return Address(int(address_str), int(value_str))
-
-
-def read_inputs(filename: str = "input.txt") -> Generator(FileLine):
-    """Read in and parse a text file of inputs.
-
-    Parameters
-    ----------
-    filename: str
-        The name of the file in this directory to load
-
-    Yields
-    ------
-    FileLine
-        parsed line from the file
-    """
-    in_path: Path = Path(__file__).resolve().parent / filename
-    with open(in_path, "r") as f:
-        for line in f.readlines():
-            if line.startswith("mask"):
-                yield FileLine(parse_bitmasks(line), None)
-            elif line.startswith("mem"):
-                yield FileLine(None, parse_address(line))
-            else:
-                raise ValueError(f"unrecognized line: {line}")
 
 
 def part1(filename: str = "input.txt") -> int:
@@ -215,15 +163,18 @@ def part1(filename: str = "input.txt") -> int:
         The answer to part 1
     """
     # initialize empty bitmask
-    bitmasks: List[Bitmask] = list()
+    bitmask: str = ""
     addresses: Counter = Counter()
-    for fileline in read_inputs(filename):
-        if fileline.bitmasks is not None:
-            bitmasks = fileline.bitmasks
-        elif fileline.address is not None:
-            addresses[fileline.address.index] = apply_bitmasks(
-                bitmasks, fileline.address.value
-            )
+    in_path: Path = Path(__file__).resolve().parent / filename
+    with open(in_path, "r") as f:
+        for line in f.readlines():
+            if line.startswith("mask"):
+                bitmask = parse_bitmasks(line)
+            elif line.startswith("mem"):
+                address: Address = parse_address(line)
+                addresses[address.location] = apply_bitmasks(bitmask, address.value)
+            else:
+                raise ValueError(f"unrecognized line: {line}")
     return sum(addresses.values())
 
 
@@ -246,15 +197,11 @@ def part2(filename: str = "input.txt") -> int:
     with open(in_path, "r") as f:
         for line in f.readlines():
             if line.startswith("mask"):
-                bitmask = part2_bitmasks(line)
+                bitmask = parse_bitmasks(line)
             elif line.startswith("mem"):
                 address: Address = parse_address(line)
-                for index in apply_bitmasks2(bitmask, address.index):
+                for index in apply_bitmasks2(bitmask, address.location):
                     addresses[index] = address.value
             else:
                 raise ValueError(f"unrecognized line: {line}")
     return sum(addresses.values())
-
-
-if __name__ == "__main__":
-    part2("example2.txt")
