@@ -20,7 +20,7 @@ def test_part_1_actual():
 #     assert test_result == 175594
 
 
-# def test_part_2_actual():
-#     """Check the example for part 1."""
-#     test_result = main.part2("input.txt")
-#     assert test_result == 18234
+def test_part_2_actual():
+    """Check the example for part 1."""
+    test_result = main.part2("input.txt")
+    assert test_result == 1093427331937
