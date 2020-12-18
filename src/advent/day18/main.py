@@ -1,6 +1,7 @@
 """Day 17 of the advent of code challenge."""
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Generator, List
 
@@ -87,6 +88,50 @@ def parse(line: str) -> str:
         return equation[0]
 
 
+def parse2(line: str) -> str:
+    """Parse a line using updated weird math.
+
+    Could I factor out some common stuff from parse 1? Probably. Will I? No.
+
+    Parameters
+    ----------
+    line: str
+        The input line
+    
+    Returns
+    -------
+    str
+        The weird math output
+    """
+    if "(" in line:
+        start_index: int = min(i for i, c in enumerate(line) if c == "(")
+        end_index: int = matching_brace_index(line[start_index:]) + start_index
+        cleaned_line = (
+            line[:start_index]
+            + str(parse2(line[start_index + 1 : end_index]))
+            + line[end_index + 1 :]
+        )
+        return parse2(cleaned_line)
+    else:
+        equation: List[str] = list(reversed(line.split()))
+        while "+" in equation:
+            next_plus: int = min(i for i, x in enumerate(equation) if x == "+")
+            pre: List[str]
+            post: List[str]
+            try:
+                pre = equation[: next_plus - 1]
+            except IndexError:
+                pre = []
+            try:
+                post = equation[next_plus + 2 :]
+            except IndexError:
+                post = []
+            mid = [str(int(equation[next_plus - 1]) + int(equation[next_plus + 1]))]
+            equation = pre + mid + post
+        nums: List[int] = [int(x) for x in equation if x != "*"]
+        return str(math.prod(nums))
+
+
 def part1(filename: str = "input.txt") -> int:
     """Solve part 1 of the challenge.
 
@@ -116,4 +161,4 @@ def part2(filename: str = "input.txt") -> int:
     int
         The answer to part 2
     """
-    return -1
+    return sum(int(parse2(line)) for line in read_inputs(filename))
