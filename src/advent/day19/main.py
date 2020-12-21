@@ -11,7 +11,7 @@ class Rule(NamedTuple):
 
     id: int
     literal: Optional[str] = None
-    child_rules: List[int] = []
+    child_rules: List[List[int]] = []
 
 
 def parse_rule(line: str) -> Rule:
@@ -63,9 +63,62 @@ def read_inputs(filename: str) -> Tuple[Dict[int, Rule], List[str]]:
     messages: List[str] = [message for message in messages_str.split("\n")]
     return rules_dict, messages
 
+
 def check_message(rules_dict: Dict[int, Rule], message: str) -> bool:
-    """Check if a message is valid."""
+    """Check if a message is valid.
     
+    Parameters
+    ----------
+    rules_dict: Dict[int, Rule]
+        map rule ids to Rule objects
+    message: str
+        The message to validate
+    
+    Returns
+    -------
+    bool:
+        Whether or not the message is valid
+    """
+    # make a queue of
+    q = deque([(message, [0])])
+    while q:
+        # take from the queue
+        message, rule_ids = q.popleft()
+
+        # If we have an empty string and an empty list
+        # we've consumed both the entire message and all the
+        # rules, so that's a match
+        if not message and not rule_ids:
+            return True
+
+        # If we have consumed the string or the rules but not both -> no match
+        elif not message or not rule_ids:
+            continue
+
+        # Each rule matches at least 1 character, if we have more rules than characters
+        # it can't be a match
+        elif len(rule_ids) > len(message):
+            continue
+
+        # have both a remaining message and rule_ids.
+        # Try the first rule and remove it from the list of rules to try
+        rule = rules_dict[rule_ids[0]]
+        rule_ids = rule_ids[1:]
+
+        # first rule is literal, so if it matches the first character,
+        # then add the rest of the string and the rest of the rules to the queue
+        if rule.literal and message[0] == rule.literal:
+            q.append((message[1:], rule_ids))
+
+        # otherwise, I have one more sequences of subrules,
+        # for each of those sequences, I prepend it to the remaining rule_ids
+        # and add that new list of rule ids to the queue with s
+        else:
+            for subrule_ids in rule.child_rules:
+                q.append((message, subrule_ids + rule_ids))
+
+    # queue is exhausted, never found a match, so return False
+    return False
 
 
 def part1(filename: str = "input.txt") -> int:
@@ -81,29 +134,28 @@ def part1(filename: str = "input.txt") -> int:
     int
         The answer to part 1
     """
-    current_active: Set[Cube] = read_inputs(filename)
-    for _ in range(6):
-        current_active = cycle(current_active)
-    return len(current_active)
+    rules_dict, messages = read_inputs(filename)
+    return sum(check_message(rules_dict, message) for message in messages)
 
 
-# def part2(filename: str = "input.txt") -> int:
-#     """Solve part 2 of the challenge.
+def part2(filename: str = "input.txt") -> int:
+    """Solve part 2 of the challenge.
 
-#     Parameters
-#     ----------
-#     filename: str
-#         The name of the file, should be in the same folder as this module
+    Parameters
+    ----------
+    filename: str
+        The name of the file, should be in the same folder as this module
 
-#     Returns
-#     -------
-#     int
-#         The answer to part 2
-#     """
-#     current_active: Set[Cube] = read_inputs(filename, hypercube=True)
-#     for _ in range(6):
-#         current_active = cycle(current_active)
-#     return len(current_active)
+    Returns
+    -------
+    int
+        The answer to part 2
+    """
+    rules_dict, messages = read_inputs(filename)
+    rules_dict[8] = parse_rule("8: 42 | 42 8")
+    rules_dict[11] = parse_rule("11: 42 31 | 42 11 31")
+    return sum(check_message(rules_dict, message) for message in messages)
+
 
 if __name__ == "__main__":
-    rules_dict, messages = read_inputs("example.txt")
+    part1("example.txt")
