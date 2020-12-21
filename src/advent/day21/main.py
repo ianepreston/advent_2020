@@ -121,7 +121,14 @@ def part1(filename: str = "input.txt") -> int:
     return safe_ingredients
 
 
-def part2(filename: str = "input.txt") -> int:
+class AllergenIngredient(NamedTuple):
+    """I map an allergen to its associated ingredient."""
+
+    allergen: str
+    ingredient: str
+
+
+def part2(filename: str = "input.txt") -> str:
     """Solve part 2 of the puzzle.
 
     Parameters
@@ -131,11 +138,22 @@ def part2(filename: str = "input.txt") -> int:
 
     Returns
     -------
-    int:
+    str:
         The answer to part 2
     """
-    return -1
+    recipes = read_input(filename)
+    allergen_mapper = allergen_to_ingredients(recipes)
+
+    allergen_tups = sorted(
+        [
+            AllergenIngredient(allergen, ingredient)
+            for allergen, ingredient in allergen_mapper.items()
+        ],
+        key=lambda x: x.allergen,
+    )
+    canonical_list = ",".join(ai.ingredient for ai in allergen_tups)
+    return canonical_list
 
 
 if __name__ == "__main__":
-    part1("example.txt")
+    print(part2("example.txt"))
