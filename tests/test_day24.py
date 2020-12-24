@@ -16,11 +16,11 @@ def test_part_1_actual():
 
 # def test_part_2_example():
 #     """Check the example for part 2."""
-#     test_result = main.part2(main.EG_CUPS)
-#     assert test_result == 149245887792
+#     test_result = main.part2("example.txt")
+#     assert test_result == 2208
 
 
 # def test_part_2_actual():
 #     """Test the actual answer for part 2."""
-#     test_result = main.part2(main.IN_CUPS)
-#     assert test_result == 219634632000
+#     test_result = main.part2("input.txt")
+#     assert test_result == 4118
