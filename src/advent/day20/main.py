@@ -1,183 +1,380 @@
-"""Day 20 of the advent of code challenge."""
+"""Day 20 of the advent of code challenge.
+
+NOT MY CODE
+I adapted this from Joel Grus because it seems like you can't unlock part 2 of
+day 25 unless you've done all the other challenges. This is the only one I skipped
+and I don't feel like dealing with it. I've cleaned up his solution a bit to match my
+implementation style for the rest of the puzzles, but the actual algorithm is his.
+"""
 from __future__ import annotations
 
-from collections import defaultdict
-import numpy as np
-from dataclasses import dataclass
-from pathlib import Path
-import re
+from collections import Counter
 import math
-from typing import (
-    Counter,
-    List,
-    Set,
-)
+from pathlib import Path
+from typing import Dict, Iterator, List, NamedTuple, Optional, Tuple
+
+Edge = str
 
 
-@dataclass
-class Tile:
-    """I'm a tile in an image."""
+class Edges(NamedTuple):
+    """The edges of a puzzle piece."""
 
-    id: int
-    layout: np.ndarray
-    rotation: int = 0
+    top: Edge
+    bottom: Edge
+    left: Edge
+    right: Edge
 
-    def hflip(self) -> None:
-        """Flip left to right."""
-        self.layout = [row[::-1] for row in self.layout]
-        self.h_flipped = not self.h_flipped
 
-    def vflip(self) -> None:
-        """Flip top to bottom."""
-        self.layout = self.layout[::-1]
-        self.v_flipped = not self.v_flipped
+Pixels = List[List[str]]
 
-    @property
-    def left(self) -> str:
-        """Left side of the layout."""
-        return "".join(row[0] for row in self.layout)
 
-    @property
-    def right(self) -> str:
-        """Right side of the layout."""
-        return "".join(row[-1] for row in self.layout)
+class Tile(NamedTuple):
+    """A tile in the puzzle."""
 
-    @property
-    def h_sides(self) -> List[str]:
-        """Left and right sides of the layout."""
-        return [self.left, self.right]
+    tile_id: int
+    pixels: Pixels
+
+    def rotate(self, n: int) -> Tile:
+        """Rotate the tile clockwise n times and return a new Tile object.
+
+        Parameters
+        ----------
+        n: int
+            Number of rotations
+
+        Returns
+        -------
+        Tile:
+            The rotated tile
+        """
+        pixels = self.pixels
+        for _ in range(n):
+            rotated = []
+            for c in range(len(pixels[0])):
+                rotated.append([row[c] for row in reversed(pixels)])
+            pixels = rotated
+        return self._replace(pixels=pixels)
+
+    def flip_horizontal(self, do: bool = False) -> Tile:
+        """
+        Flip the tile horizontally and return a new tile object
+        """
+        pixels = [list(reversed(row)) for row in self.pixels] if do else self.pixels
+        return self._replace(pixels=pixels)
+
+    def flip_vertical(self, do: bool = False) -> Tile:
+        """
+        Flip the tile vertically and return a new tile object
+        """
+        pixels = list(reversed(self.pixels)) if do else self.pixels
+        return self._replace(pixels=pixels)
+
+    def all_rotations(self) -> Iterator[Tile]:
+        """
+        Return the 8 tiles I can get from this one
+        by doing rotations and flips
+        """
+        for flip_h in [True, False]:
+            for rot in [0, 1, 2, 3]:
+                yield (self.flip_horizontal(flip_h).rotate(rot))
+
+    def show(self) -> None:
+        for row in self.pixels:
+            print("".join(row))
 
     @property
     def top(self) -> str:
-        """Top of the layout."""
-        return self.layout[0]
+        return "".join(self.pixels[0])
 
     @property
     def bottom(self) -> str:
-        """Bottom of the layout."""
-        return self.layout[-1]
+        return "".join(self.pixels[-1])
 
     @property
-    def v_sides(self) -> List[str]:
-        """Top and bottom sides of the layout."""
-        return [self.top, self.bottom]
+    def left(self) -> str:
+        return "".join([row[0] for row in self.pixels])
 
-    def h_match(self, other: Tile) -> bool:
-        """If either of the horizontal edges can match."""
-        for side in self.h_sides:
-            if side in other.h_sides:
-                return True
-            other.vflip()
-            if side in other.h_sides:
-                other.vflip()
-                return True
-            other.vflip()
-            return False
+    @property
+    def right(self) -> str:
+        return "".join([row[-1] for row in self.pixels])
 
-    def v_match(self, other: Tile) -> bool:
-        """If either of the horizontal edges can match."""
-        for side in self.v_sides:
-            if side in other.v_sides:
-                return True
-            other.hflip()
-            if side in other.v_sides:
-                other.vflip()
-                return True
-            other.hflip()
-            return False
+    def edges(self, reverse: bool = False) -> Edges:
+        """
+        Returns the edges of the tile as strings.
+        If reverse == True, rotates the tile by 180 degrees first,
+        which results in all the edges being in the opposite direction
+        """
+        if reverse:
+            return self.rotate(2).edges()
+        return Edges(top=self.top, bottom=self.bottom, right=self.right, left=self.left)
+
+    @staticmethod
+    def parse(raw_tile: str) -> Tile:
+        lines = raw_tile.split("\n")
+        tile_id = int(lines[0].split()[-1][:-1])
+        pixels = [list(line) for line in lines[1:]]
+        return Tile(tile_id, pixels)
 
 
-def parse_tile(input: str) -> Tile:
-    """Turn a string into a tile.
-    
-    Parameters
-    ----------
-    input: str
-        Text representation of tile
-    
-    Returns
-    -------
-    Tile
-        parsed tile
+def make_tiles(raw: str) -> List[Tile]:
+    tiles_raw = raw.split("\n\n")
+    return [Tile.parse(tile_raw) for tile_raw in tiles_raw]
+
+
+def find_corners(tiles: List[Tile]) -> List[Tile]:
     """
-    lines = input.split("\n")
-    id_str = lines.pop(0)
-    id = int(id_str.replace("Tile ", "").replace(":", ""))
-    return Tile(id=id, layout=lines)
+    Return corners oriented so that
+    they would be the top left corner
+    """
+    # count up all the edges / reverse edges that occur
+    # for example, if a tile had the top edge "ABCD",
+    # we would count "ABCD" once and also "DCBA" once
+    edge_counts = Counter(
+        edge
+        for tile in tiles
+        for reverse in [True, False]
+        for edge in tile.edges(reverse)
+    )
+
+    corners = []
+
+    for tile in tiles:
+        sides_with_no_matches = 0
+        for edge in tile.edges():
+            if edge_counts[edge] == 1 and edge_counts[edge[::-1]] == 1:
+                sides_with_no_matches += 1
+
+        if sides_with_no_matches == 2:
+            # rotate to get corner edges at top and left
+            for rot in [0, 1, 2, 3]:
+                tile = tile.rotate(rot)
+                edges = tile.edges()
+
+                if edge_counts[edges.left] == 1 and edge_counts[edges.top] == 1:
+                    corners.append(tile)
+                    break
+
+    return corners
+
+
+Assembly = List[List[Optional[Tile]]]
+
+
+class Constraint(NamedTuple):
+    """
+    Says that the tile at location (i, j)
+    must have sides that match the specified
+    top / bottom / left / right
+    """
+
+    i: int
+    j: int
+    top: Optional[str] = None
+    bottom: Optional[str] = None
+    left: Optional[str] = None
+    right: Optional[str] = None
+
+    def satisfied_by(self, tile: Tile) -> bool:
+        """
+        Does the tile satisfy this constraint
+        """
+        if self.top and tile.top != self.top:
+            return False
+        if self.bottom and tile.bottom != self.bottom:
+            return False
+        if self.left and tile.left != self.left:
+            return False
+        if self.right and tile.right != self.right:
+            return False
+        return True
+
+    @property
+    def num_constraints(self) -> int:
+        return (
+            (self.top is not None)
+            + (self.bottom is not None)
+            + (self.left is not None)
+            + (self.right is not None)
+        )
+
+
+def find_constraints(assembly: Assembly) -> Iterator[Constraint]:
+    """
+    Create constraints from a (partially filled in) Assembly.
+    No constraints for already-filled-in tiles or unconstrained locations.
+    """
+    n = len(assembly)
+
+    for i, row in enumerate(assembly):
+        for j, tile in enumerate(row):
+            # already have a tile here
+            if assembly[i][j]:
+                continue
+            constraints: Dict[str, str] = {}
+            if i > 0 and (nbr := assembly[i - 1][j]):
+                constraints["top"] = nbr.bottom
+            if i < n - 1 and (nbr := assembly[i + 1][j]):
+                constraints["bottom"] = nbr.top
+            if j > 0 and (nbr := assembly[i][j - 1]):
+                constraints["left"] = nbr.right
+            if j < n - 1 and (nbr := assembly[i][j + 1]):
+                constraints["right"] = nbr.left
+
+            if constraints:
+                yield Constraint(i, j, **constraints)
+
+
+def assemble_image(tiles: List[Tile]) -> Assembly:
+    """
+    Take the tiles and figure out how to stick them together
+    """
+    num_tiles = len(tiles)
+    side_length = int(math.sqrt(num_tiles))
+    corners = find_corners(tiles)
+
+    # Pick a corner, any corner
+    tile = corners[0]
+
+    # Create an empty assembly
+    assembly: Assembly = [
+        [None for _ in range(side_length)] for _ in range(side_length)
+    ]
+
+    # Put this corner tile in the top left
+    assembly[0][0] = tile
+
+    # Keep track of which tiles I've already placed
+    placed: Dict[int, Tuple[int, int]] = {tile.tile_id: (0, 0)}
+
+    # Repeat until all tiles have been placed
+    while len(placed) < num_tiles:
+        # Just care about unplaced tiles
+        tiles = [t for t in tiles if t.tile_id not in placed]
+
+        # Find the constraints based on all the tiles placed so far
+        # and order them by descending # of constraints
+        constraints = list(find_constraints(assembly))
+        constraints.sort(key=lambda c: c.num_constraints, reverse=True)
+
+        # Did I find a tile to add, so we can break out of inner loops
+        found_one = False
+
+        # Try constraints one at a time and see if we can find a tile
+        # that satisfies them
+        for constraint in constraints:
+            for tile in tiles:
+                # try all rotations for this tile, to see if any satisfies this constraint
+                for rot in tile.all_rotations():
+                    if constraint.satisfied_by(rot):
+                        # place this rotation (which is a tile) at i, j
+                        assembly[constraint.i][constraint.j] = rot
+                        placed[rot.tile_id] = (constraint.i, constraint.j)
+                        found_one = True
+                        break
+                if found_one:
+                    break
+            if found_one:
+                break
+
+    return assembly
+
+
+def glue(assembly: Assembly) -> Pixels:
+    """
+    Glue together the Tiles into a single grid of pixels,
+    removing the edges of each tile
+    """
+    N = len(assembly)
+    n = len(assembly[0][0].pixels)
+    nout = (n - 2) * N
+    glued = [["" for _ in range(nout)] for _ in range(nout)]
+    for i, row in enumerate(assembly):
+        for j, tile in enumerate(row):
+            cropped = [line[1:-1] for line in tile.pixels[1:-1]]
+            for ii, crow in enumerate(cropped):
+                for jj, pixel in enumerate(crow):
+                    glued[i * (n - 2) + ii][j * (n - 2) + jj] = pixel
+
+    return glued
+
+
+SEA_MONSTER_RAW = """                  #
+#    ##    ##    ###
+ #  #  #  #  #  #"""
+
+# offsets for a sea monster
+SEA_MONSTER = [
+    (i, j)
+    for i, row in enumerate(SEA_MONSTER_RAW.split("\n"))
+    for j, c in enumerate(row)
+    if c == "#"
+]
+
+
+def find_sea_monsters(pixels: Pixels) -> Iterator[Tuple[int, int]]:
+    """
+    Return the indices of the top left corner of each sea monster
+    """
+    for i, row in enumerate(pixels):
+        for j, c in enumerate(row):
+            try:
+                if all(pixels[i + di][j + dj] == "#" for di, dj in SEA_MONSTER):
+                    yield (i, j)
+            except IndexError:
+                continue
+
+
+def roughness(glued: Pixels) -> int:
+    """
+    Count the #s that are not part of a sea monster
+    """
+    # put the pixels in a Tile so we can use Tile methods
+    tile = Tile(0, glued)
+
+    # for each of the 8 rotation/flips, find the list of sea monster top lefts
+    finds = [(t, list(find_sea_monsters(t.pixels))) for t in tile.all_rotations()]
+
+    # only keep the ones that had sea monsters
+    finds = [(t, sm) for t, sm in finds if sm]
+
+    # hopefully only one of them had sea monsters
+    assert len(finds) == 1
+
+    # and that's our tile (and sea monster locations)
+    t, sms = finds[0]
+
+    # now we can computer all pixels that are showing a sea monster
+    sea_monster_pixels = {(i + di, j + dj) for i, j in sms for di, dj in SEA_MONSTER}
+
+    # and count all the '#'s that are not sea monster pixels
+    return sum(
+        c == "#" and (i, j) not in sea_monster_pixels
+        for i, row in enumerate(t.pixels)
+        for j, c in enumerate(row)
+    )
 
 
 def read_input(filename: str):
-    """Load the input for the puzzle.
-
-    Parameters
-    ----------
-    filename: str
-        input.txt or example.txt
-    
-    Returns
-    -------
-    A thing
-    """
-    file: Path = Path(__file__).resolve().parent / filename
-    with open(file, "r") as f:
-        return [parse_tile(line) for line in f.read().split("\n\n")]
+    """Read in the file."""
+    here: Path = Path(__file__).resolve().parent
+    in_path: Path = here / filename
+    with open(in_path, "r") as f:
+        raw = f.read()
+    return make_tiles(raw)
 
 
 def part1(filename: str = "input.txt") -> int:
-    """Solve part 1 of the puzzle.
-
-    Parameters
-    ----------
-    filename: str
-        The name of the file in this directory to load
-
-    Returns
-    -------
-    int:
-        The answer to part 1
-    """
+    """Part 1 of the puzzle."""
     tiles = read_input(filename)
-    dim = int(math.sqrt(len(tiles)))
-    if dim ** 2 != len(tiles):
-        raise ValueError("Didn't get a correct number of tiles to form a square")
-    h_matches = Counter()
-    v_matches = Counter()
-    for count_tile in tiles:
-        for compare_tile in tiles:
-            if count_tile.id == compare_tile.id:
-                pass
-            else:
-                if count_tile.h_match(compare_tile):
-                    h_matches[count_tile.id] += 1
-                if count_tile.v_match(compare_tile):
-                    v_matches[count_tile.id] += 1
-    h_edge_ids = [id for id, count in h_matches.items() if count == 1]
-    v_edge_ids = [id for id, count in v_matches.items() if count == 1]
-    if not len(h_edge_ids) == len(v_edge_ids) == dim * 2:
-        raise ValueError(
-            f"Didn't find the correct number of edges, v: {len(v_edge_ids)} h: {len(h_edge_ids)}, dim: {dim}"
-        )
-    corners = set.intersection([set(h_edge_ids), set(v_edge_ids)])
-    if not len(corners) == 4:
-        raise ValueError(f"Wrong number of corners found : {len(corners)}")
-    return math.prod(corners)
+    corners = find_corners(tiles)
+    if len(corners) != 4:
+        raise RuntimeError(f"Wrong number of corners: {len(corners)}")
+    return math.prod(tile.tile_id for tile in corners)
 
 
-def part2(filename: str = "input.txt") -> str:
-    """Solve part 2 of the puzzle.
-
-    Parameters
-    ----------
-    filename: str
-        The name of the file in this directory to load
-
-    Returns
-    -------
-    str:
-        The answer to part 2
-    """
-    return -1
-
-
-if __name__ == "__main__":
-    part1("example.txt")
+def part2(filename: str = "input.txt") -> int:
+    """Part 2 of the puzzle."""
+    tiles = read_input(filename)
+    images = assemble_image(tiles)
+    glued = glue(images)
+    return roughness(glued)
